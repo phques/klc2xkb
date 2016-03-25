@@ -1,3 +1,6 @@
+// Klc2Xkb project
+// Copyright 2016 Philippe Quesnel
+// Licensed under the Academic Free License version 3.0
 package main
 
 import (
