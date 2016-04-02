@@ -48,5 +48,5 @@ xkb_symbols "??" {
   key <AB08> { [ U002c, U0027, U00af ] };  // COMMA, APOSTROPHE, <none>, MACRON
   key <AB09> { [ U002e, U002e, U00ad ] };  // FULL STOP, FULL STOP, <none>, SOFT HYPHEN
   key <AB10> { [ U00e9, U00c9, U00b4 ] };  // LATIN SMALL LETTER E WITH ACUTE, LATIN CAPITAL LETTER E WITH ACUTE, <none>, ACUTE ACCENT
-include "level3(ralt_switch)"
+  include "level3(ralt_switch)"
 };

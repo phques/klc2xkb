@@ -10,12 +10,8 @@ import (
 	"text/scanner"
 )
 
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
+// scans a microsoft klc file (keyboard layout)
+// re-outputs in a linux xkb usuable format
 type KlcScanner struct {
 	scanner.Scanner
 	filename string //input
@@ -23,10 +19,12 @@ type KlcScanner struct {
 
 	scancodeToKey map[string]string
 
+	// scanner token data
 	token      rune
 	tokenText  string
 	pushedBack bool
 
+	// extracted data from klc file
 	description   string
 	layoutColumns [10]bool // output column X if true
 	hasAltGr      bool
@@ -120,8 +118,10 @@ func (scanr *KlcScanner) initScancodes() {
 }
 
 func (scanr *KlcScanner) close() {
-	scanr.outfile.Close()
-	scanr.outfile = nil
+	if scanr.outfile != nil {
+		scanr.outfile.Close()
+		scanr.outfile = nil
+	}
 }
 
 //-----------
@@ -263,7 +263,7 @@ func (scanr *KlcScanner) scanShiftStates() string {
 
 	columnNo := 4 // actual keys start at col 4
 
-	// read next integer / shiftstate
+	// read next integer / shiftstate (0,1,2,6,7)
 	scanr.getNextToken()
 	for scanr.token == scanner.Int {
 		// is it one of the shiftstates we want ?
@@ -271,6 +271,7 @@ func (scanr *KlcScanner) scanShiftStates() string {
 			// mark this column to be outputed
 			scanr.layoutColumns[columnNo] = true
 
+			// shiftstate 6 & 7 are 'AltGr' definitions
 			if scanr.tokenText == "6" || scanr.tokenText == "7" {
 				scanr.hasAltGr = true
 			}
@@ -338,6 +339,7 @@ func (scanr *KlcScanner) scanLayout() string {
 			continue
 		}
 
+		// scan this layout keyboard key row
 		scanr.scanLayoutKeyRow(keyname)
 
 		scanr.getNextToken()
@@ -346,6 +348,10 @@ func (scanr *KlcScanner) scanLayout() string {
 	fmt.Printf("%v unexpected end of file\n", scanr.Pos())
 	return "STOP"
 }
+
+// scans one row / key.
+// first column has been read & converted to keyname param (xkb keyname)
+// 02	1		0	1	0021	-1	00b1		// DIGIT ONE, EXCLAMATION MARK, <none>, PLUS-MINUS SIGN
 
 func (scanr *KlcScanner) scanLayoutKeyRow(keyname string) {
 	// output beginning of new key
@@ -378,6 +384,7 @@ func (scanr *KlcScanner) scanLayoutKeyRow(keyname string) {
 				char = "U" + char
 			}
 
+			// output this column
 			if !firstCol {
 				fmt.Fprint(scanr.outfile, ", ")
 			}
@@ -403,11 +410,11 @@ func (scanr *KlcScanner) scanLayoutKeyRow(keyname string) {
 }
 
 func (scanr *KlcScanner) scan() {
-	state := ""
+	state := "start"
 
 	for scanr.token != scanner.EOF {
 		switch state {
-		case "":
+		case "start":
 			scanr.expectIdent("KBD")
 			state = scanr.scanKbd()
 
@@ -429,53 +436,6 @@ func (scanr *KlcScanner) scan() {
 	}
 }
 
-func (scanr *KlcScanner) scan_() {
-
-	scanr.getNextToken()
-
-	for scanr.token != scanner.EOF {
-
-		fmt.Println("At position", scanr.Pos(), ":",
-			scanner.TokenString(scanr.token), scanr.tokenText)
-
-		if scanr.token != scanner.Ident {
-			tokenString := scanner.TokenString(scanr.token)
-			fmt.Println("Unexpected token ", tokenString, " : ", scanr.tokenText)
-			fmt.Println(" at ", scanr.Pos())
-			return
-		}
-
-		switch scanr.tokenText {
-		case "KBD":
-			scanr.scanKbd()
-
-		case "SHIFTSTATE":
-			scanr.scanShiftStates()
-
-		case "LAYOUT":
-			scanr.scanLayout()
-
-		case "DEADKEY":
-			scanr.IsIdentRune = nil
-			scanr.Mode |= scanner.SkipComments
-			fmt.Println("**out of layout")
-
-			// we actually just stop here ;-P
-			return
-
-		default:
-			//ignore this keyword, skip to eol
-			fmt.Printf("skiping (%s) to eol ", scanr.tokenText)
-			for scanr.token != '\n' && scanr.token != scanner.EOF {
-				scanr.token = scanr.Next()
-				fmt.Printf("%c", scanr.token)
-			}
-		}
-
-		scanr.getNextToken()
-	}
-}
-
 func main() {
 	// Open the file.
 	if len(os.Args) != 3 {
@@ -484,9 +444,11 @@ func main() {
 	}
 
 	scanr, err := newScanner(os.Args[1], os.Args[2])
-	check(err)
-
-	//scan
-	scanr.scan()
-	scanr.close()
+	if err != nil {
+		fmt.Print(err)
+	} else {
+		//scan
+		scanr.scan()
+		scanr.close()
+	}
 }
