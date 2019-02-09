@@ -113,7 +113,10 @@ func (scanr *KlcScanner) initScancodes() {
 	// dont output
 	codes["39"] = "-"
 	codes["53"] = "-"
-	codes["56"] = "-"
+    // I think this the extra key on pc105 kbd:  shift/lsgt/z/x/c/v..) 
+    // I use this to have a key defined in the xkb map, when using Shift_L to output a letter, with xcape
+    // ie to do "angle mod"
+    codes["56"] = "LSGT" 
 
 }
 
